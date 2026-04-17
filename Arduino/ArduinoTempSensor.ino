@@ -14,9 +14,10 @@ DallasTemperature DS18B20(&oneWire);
 
 // ---------------- SUPABASE ----------------
 const char* host = "nykattzjvckobdoyrnln.supabase.co";
+
 const int httpsPort = 443;
 
-const char* supabaseKey = "YOUR_SUPABASE_KEY";
+const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2F0dHpqdmNrb2Jkb3lybmxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTM0NTQsImV4cCI6MjA4NzUyOTQ1NH0.d_2tKReBu45WNdZqzILr66biS4oXK0s5Fsdc2Fwaizg";
 
 // ---------------- CLIENT ----------------
 WiFiSSLClient client;
@@ -50,8 +51,7 @@ void sendTemperature(float value) {
   }
 
   String json = "{\"value\":" + String(value, 1) + "}";
-
-  client.println("POST /rest/v1/temperature HTTP/1.1");
+  client.println("POST /rest/v1/temperature");
   client.println("Host: " + String(host));
   client.println("Content-Type: application/json");
   client.println("apikey: " + String(supabaseKey));
@@ -65,12 +65,12 @@ void sendTemperature(float value) {
   Serial.println("Data sent!");
 
   // Read response (debug)
-  while (client.connected() || client.available()) {
-    if (client.available()) {
-      char c = client.read();
-      Serial.print(c);
-    }
-  }
+  //while (client.connected() || client.available()) {
+  //  if (client.available()) {
+  //    char c = client.read();
+  //    Serial.print(c);
+  //  }
+  //}
 
   client.stop();
 }
