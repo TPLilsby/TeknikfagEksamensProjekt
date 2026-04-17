@@ -1,119 +1,97 @@
-// (c) Copyright 2010-2012 MCQN Ltd.
-// Released under Apache License, version 2.0
-//
-// Simple example to show how to use the HttpClient library
-// Get's the web page given at http://<kHostname><kPath> and
-// outputs the content to the serial port
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <WiFiS3.h>
 
-#include <SPI.h>
-#include <HttpClient.h>
-#include <Ethernet.h>
-#include <EthernetClient.h>
+// ---------------- WIFI ----------------
+char ssid[] = "Lab-ZBC";
+char pass[] = "Prestige#PuzzledCASH48!";
 
-// This example downloads the URL "http://arduino.cc/"
+// ---------------- SENSOR ----------------
+#define SENSOR_PIN 4
 
-// Name of the server we want to connect to
-const char kHostname[] = "arduino.cc";
-// Path to download (this is the bit after the hostname in the URL
-// that you want to download
-const char kPath[] = "/";
+OneWire oneWire(SENSOR_PIN);
+DallasTemperature DS18B20(&oneWire);
 
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+// ---------------- SUPABASE ----------------
+const char* host = "nykattzjvckobdoyrnln.supabase.co";
+const int httpsPort = 443;
 
-// Number of milliseconds to wait without receiving any data before we give up
-const int kNetworkTimeout = 30*1000;
-// Number of milliseconds to wait if no data is available before trying again
-const int kNetworkDelay = 1000;
+const char* supabaseKey = "YOUR_SUPABASE_KEY";
 
-void setup()
-{
-  // initialize serial communications at 9600 bps:
-  Serial.begin(9600); 
+// ---------------- CLIENT ----------------
+WiFiSSLClient client;
 
-  while (Ethernet.begin(mac) != 1)
-  {
-    Serial.println("Error getting IP address via DHCP, trying again...");
-    delay(15000);
-  }  
+// ---------------- SETUP ----------------
+void setup() {
+  Serial.begin(9600);
+  delay(1000);
+
+  DS18B20.begin();
+
+  Serial.print("Connecting to WiFi");
+
+  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected!");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
 }
 
-void loop()
-{
-  int err =0;
-  
-  EthernetClient c;
-  HttpClient http(c);
-  
-  err = http.get(kHostname, kPath);
-  if (err == 0)
-  {
-    Serial.println("startedRequest ok");
+// ---------------- SEND FUNCTION ----------------
+void sendTemperature(float value) {
+  Serial.println("\nConnecting to server...");
 
-    err = http.responseStatusCode();
-    if (err >= 0)
-    {
-      Serial.print("Got status code: ");
-      Serial.println(err);
+  if (!client.connect(host, httpsPort)) {
+    Serial.println("Connection failed");
+    return;
+  }
 
-      // Usually you'd check that the response code is 200 or a
-      // similar "success" code (200-299) before carrying on,
-      // but we'll print out whatever response we get
+  String json = "{\"value\":" + String(value, 1) + "}";
 
-      err = http.skipResponseHeaders();
-      if (err >= 0)
-      {
-        int bodyLen = http.contentLength();
-        Serial.print("Content length is: ");
-        Serial.println(bodyLen);
-        Serial.println();
-        Serial.println("Body returned follows:");
-      
-        // Now we've got to the body, so we can print it out
-        unsigned long timeoutStart = millis();
-        char c;
-        // Whilst we haven't timed out & haven't reached the end of the body
-        while ( (http.connected() || http.available()) &&
-               ((millis() - timeoutStart) < kNetworkTimeout) )
-        {
-            if (http.available())
-            {
-                c = http.read();
-                // Print out this character
-                Serial.print(c);
-               
-                bodyLen--;
-                // We read something, reset the timeout counter
-                timeoutStart = millis();
-            }
-            else
-            {
-                // We haven't got any data, so let's pause to allow some to
-                // arrive
-                delay(kNetworkDelay);
-            }
-        }
-      }
-      else
-      {
-        Serial.print("Failed to skip response headers: ");
-        Serial.println(err);
-      }
-    }
-    else
-    {    
-      Serial.print("Getting response failed: ");
-      Serial.println(err);
+  client.println("POST /rest/v1/temperature HTTP/1.1");
+  client.println("Host: " + String(host));
+  client.println("Content-Type: application/json");
+  client.println("apikey: " + String(supabaseKey));
+  client.println("Authorization: Bearer " + String(supabaseKey));
+  client.println("Prefer: return=minimal");
+  client.print("Content-Length: ");
+  client.println(json.length());
+  client.println();
+  client.println(json);
+
+  Serial.println("Data sent!");
+
+  // Read response (debug)
+  while (client.connected() || client.available()) {
+    if (client.available()) {
+      char c = client.read();
+      Serial.print(c);
     }
   }
-  else
-  {
-    Serial.print("Connect failed: ");
-    Serial.println(err);
-  }
-  http.stop();
 
-  // And just stop, now that we've tried a download
-  while(1);
+  client.stop();
 }
 
+// ---------------- LOOP ----------------
+void loop() {
+  DS18B20.requestTemperatures();
 
+  float tempC = DS18B20.getTempCByIndex(0);
+
+  if (tempC == DEVICE_DISCONNECTED_C) {
+    Serial.println("Sensor error!");
+    delay(2000);
+    return;
+  }
+
+  Serial.print("Temperature: ");
+  Serial.print(tempC);
+  Serial.println(" °C");
+
+  sendTemperature(tempC);
+
+  delay(5000); // send every 5 seconds
+}
