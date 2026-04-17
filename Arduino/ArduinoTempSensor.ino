@@ -45,32 +45,36 @@ void setup() {
 void sendTemperature(float value) {
   Serial.println("\nConnecting to server...");
 
-  if (!client.connect(host, httpsPort)) {
+  if (!client.connect(host, 443)) {
     Serial.println("Connection failed");
     return;
   }
 
   String json = "{\"value\":" + String(value, 1) + "}";
-  client.println("POST /rest/v1/temperature");
-  client.println("Host: " + String(host));
+
+  client.println("POST /rest/v1/temperature HTTP/1.1");
+  client.println("Host: nykattzjvckobdoyrnln.supabase.co");
   client.println("Content-Type: application/json");
-  client.println("apikey: " + String(supabaseKey));
-  client.println("Authorization: Bearer " + String(supabaseKey));
+
+  client.println("apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2F0dHpqdmNrb2Jkb3lybmxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTM0NTQsImV4cCI6MjA4NzUyOTQ1NH0.d_2tKReBu45WNdZqzILr66biS4oXK0s5Fsdc2Fwaizg");
+  client.println("Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2F0dHpqdmNrb2Jkb3lybmxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NTM0NTQsImV4cCI6MjA4NzUyOTQ1NH0.d_2tKReBu45WNdZqzILr66biS4oXK0s5Fsdc2Fwaizg");
+
+
   client.println("Prefer: return=minimal");
+
   client.print("Content-Length: ");
   client.println(json.length());
-  client.println();
+
+  client.println();   // IMPORTANT blank line
   client.println(json);
 
-  Serial.println("Data sent!");
+  Serial.println("Sent, waiting response...");
 
-  // Read response (debug)
-  //while (client.connected() || client.available()) {
-  //  if (client.available()) {
-  //    char c = client.read();
-  //    Serial.print(c);
-  //  }
-  //}
+  while (client.connected() || client.available()) {
+    if (client.available()) {
+      Serial.write(client.read());
+    }
+  }
 
   client.stop();
 }
