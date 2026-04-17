@@ -51,7 +51,7 @@ void sendTemperature(float value) {
   }
 
   String json = "{\"value\":" + String(value, 1) + "}";
-
+https://nykattzjvckobdoyrnln.supabase.co/rest/v1/temperature
   client.println("POST /rest/v1/temperature HTTP/1.1");
   client.println("Host: nykattzjvckobdoyrnln.supabase.co");
   client.println("Content-Type: application/json");
