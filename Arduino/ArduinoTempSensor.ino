@@ -51,7 +51,7 @@ void sendTemperature(float value) {
     return;
   }
 
-  String json = "{\"value\":" + String(value, 1) + "}";
+  String json = "{\"value\":" + String(value, 1) + ",\"sensor_id\":\"88dc5f9d-9cfc-470e-b09d-da1fbb09bf42\"}";
   client.println("POST /rest/v1/temperature HTTP/1.1");
   client.print("Host: ");
   client.println(SECRET_SUPABASE_HOST);
